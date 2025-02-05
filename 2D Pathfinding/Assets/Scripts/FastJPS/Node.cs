@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
-namespace JPS
+namespace FastJPS
 {
     public class Node : IItem<Node>
     {
@@ -25,7 +25,8 @@ namespace JPS
         bool _block;
         public bool Block { get { return _block; } }
 
-        public Dictionary<Way, Node> NearNodes { get; set; } = new Dictionary<Way, Node>();
+        public Node[] NearNodes { get; set; } = new Node[8];
+        public bool[] HaveNodes { get; set; } = new bool[8];
 
         // g는 시작 노드부터의 거리
         // h는 끝 노드부터의 거리

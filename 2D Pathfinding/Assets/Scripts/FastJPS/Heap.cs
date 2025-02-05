@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace JPS
+namespace FastJPS
 {
     public interface IItem<T> : IComparable<T>
     {
@@ -99,7 +99,7 @@ namespace JPS
             _count = 0;
         }
 
-        public bool Contain(T item)
+        public bool Contains(T item)
         {
             if (item.StoredIndex == -1) return false; // 초기화가 안 되어있을 경우
 

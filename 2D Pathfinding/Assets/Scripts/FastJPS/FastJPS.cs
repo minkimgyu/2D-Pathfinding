@@ -1,25 +1,11 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System;
 using UnityEngine;
 
-namespace JPS
+namespace FastJPS
 {
-    public enum Way
-    {
-        UpStraight,
-        RightStraight,
-        DownStraight,
-        LeftStraight,
-
-        UpLeftDiagonal,
-        UpRightDiagonal,
-        DownRightDiagonal,
-        DownLeftDiagonal,
-    }
-
-    public class JPS : MonoBehaviour
+    public class FastJPS : MonoBehaviour
     {
         Func<Vector2, Grid2D> ReturnNodeIndex;
         Func<Grid2D, Node> ReturnNode;
@@ -101,17 +87,24 @@ namespace JPS
 
         async Task Jump(Node targetNode, Node endNode)
         {
-            Dictionary<Way, Node> directions = targetNode.NearNodes;
+            Node[] directions = targetNode.NearNodes;
+            bool[] haveDirections = targetNode.HaveNodes;
 
-            await UpdateJumpPoints(await Move(Way.UpStraight, directions[Way.UpStraight], endNode), targetNode, endNode);
-            await UpdateJumpPoints(await Move(Way.RightStraight, directions[Way.RightStraight], endNode), targetNode, endNode);
-            await UpdateJumpPoints(await Move(Way.DownStraight, directions[Way.DownStraight], endNode), targetNode, endNode);
-            await UpdateJumpPoints(await Move(Way.LeftStraight, directions[Way.LeftStraight], endNode), targetNode, endNode);
+            for (int i = 0; i < 8; i++)
+            {
+                if (haveDirections[i] == false || directions[i].Block == true) continue;
+                await UpdateJumpPoints(await Move(i, directions[i], endNode), targetNode, endNode);
+            }
 
-            await UpdateJumpPoints(await Move(Way.UpLeftDiagonal, directions[Way.UpLeftDiagonal], endNode), targetNode, endNode);
-            await UpdateJumpPoints(await Move(Way.UpRightDiagonal, directions[Way.UpRightDiagonal], endNode), targetNode, endNode);
-            await UpdateJumpPoints(await Move(Way.DownRightDiagonal, directions[Way.DownRightDiagonal], endNode), targetNode, endNode);
-            await UpdateJumpPoints(await Move(Way.DownLeftDiagonal, directions[Way.DownLeftDiagonal], endNode), targetNode, endNode);
+            //await UpdateJumpPoints(await Move(0, directions[0], endNode), targetNode, endNode);
+            //await UpdateJumpPoints(await Move(1, directions[1], endNode), targetNode, endNode);
+            //await UpdateJumpPoints(await Move(2, directions[2], endNode), targetNode, endNode);
+            //await UpdateJumpPoints(await Move(3, directions[3], endNode), targetNode, endNode);
+
+            //await UpdateJumpPoints(await Move(4, directions[4], endNode), targetNode, endNode);
+            //await UpdateJumpPoints(await Move(5, directions[5], endNode), targetNode, endNode);
+            //await UpdateJumpPoints(await Move(6, directions[6], endNode), targetNode, endNode);
+            //await UpdateJumpPoints(await Move(7, directions[7], endNode), targetNode, endNode);
         }
 
         // openList에 넣을 때 F G H 계산 필요
@@ -127,7 +120,7 @@ namespace JPS
 
             if (_closedList.Contains(jumpEnd) == true) return;
 
-            if (_openList.Contain(jumpEnd))
+            if (_openList.Contains(jumpEnd))
             {
                 float distance = GetDistance(jumpEnd.WorldPos, jumpStart.WorldPos);
 
@@ -153,9 +146,6 @@ namespace JPS
 
         async Task<Node> MoveUpStraight(Node node, Node endNode)
         {
-            if (node == null || node.Block == true) return null;
-
-            Node originNode = node;
             _passListPoints.Add(node.WorldPos);
 
             // 위쪽 경로가 있고 Block이 아닌 경우
@@ -165,28 +155,25 @@ namespace JPS
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveLeftBlockNode = node.NearNodes.ContainsKey(Way.LeftStraight) == true && node.NearNodes[Way.LeftStraight].Block == true;
-                bool haveUpperLeftPassNode = node.NearNodes.ContainsKey(Way.UpLeftDiagonal) == true && node.NearNodes[Way.UpLeftDiagonal].Block == false;
+                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].Block == true;
+                bool haveUpperLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].Block == false;
 
                 if (haveLeftBlockNode && haveUpperLeftPassNode) return node;
 
-                bool haveRightBlockNode = node.NearNodes.ContainsKey(Way.RightStraight) == true && node.NearNodes[Way.RightStraight].Block == true;
-                bool haveUpperRightPassNode = node.NearNodes.ContainsKey(Way.UpRightDiagonal) == true && node.NearNodes[Way.UpRightDiagonal].Block == false;
+                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].Block == true;
+                bool haveUpperRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].Block == false;
 
                 if (haveRightBlockNode && haveUpperRightPassNode) return node;
 
-                if (node.NearNodes.ContainsKey(Way.UpStraight) == false || node.NearNodes[Way.UpStraight].Block == true) return null;
+                if (node.HaveNodes[0] == false || node.NearNodes[0].Block == true) return null;
 
-                node = node.NearNodes[Way.UpStraight]; // 위 조건을 만족하지 않으면 그대로 진행
+                node = node.NearNodes[0]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
             }
         }
 
         async Task<Node> MoveDownStraight(Node node, Node endNode)
         {
-            if (node == null || node.Block == true) return null;
-
-            Node originNode = node;
             _passListPoints.Add(node.WorldPos);
 
             // 아래쪽 경로가 있고 Block이 아닌 경우
@@ -196,28 +183,25 @@ namespace JPS
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveLeftBlockNode = node.NearNodes.ContainsKey(Way.LeftStraight) == true && node.NearNodes[Way.LeftStraight].Block == true;
-                bool haveDownLeftPassNode = node.NearNodes.ContainsKey(Way.DownLeftDiagonal) == true && node.NearNodes[Way.DownLeftDiagonal].Block == false;
+                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].Block == true;
+                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].Block == false;
 
                 if (haveLeftBlockNode && haveDownLeftPassNode) return node;
 
-                bool haveRightBlockNode = node.NearNodes.ContainsKey(Way.RightStraight) == true && node.NearNodes[Way.RightStraight].Block == true;
-                bool haveDownRightPassNode = node.NearNodes.ContainsKey(Way.DownRightDiagonal) == true && node.NearNodes[Way.DownRightDiagonal].Block == false;
+                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].Block == true;
+                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].Block == false;
 
                 if (haveRightBlockNode && haveDownRightPassNode) return node;
 
-                if (node.NearNodes.ContainsKey(Way.DownStraight) == false || node.NearNodes[Way.DownStraight].Block == true) return null;
+                if (node.HaveNodes[2] == false || node.NearNodes[2].Block == true) return null;
 
-                node = node.NearNodes[Way.DownStraight]; // 위 조건을 만족하지 않으면 그대로 진행
+                node = node.NearNodes[2]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
             }
         }
 
         async Task<Node> MoveLeftStraight(Node node, Node endNode)
         {
-            if (node == null || node.Block == true) return null;
-
-            Node originNode = node;
             _passListPoints.Add(node.WorldPos);
 
             // 왼쪽 경로가 있고 Block이 아닌 경우
@@ -227,28 +211,25 @@ namespace JPS
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveUpBlockNode = node.NearNodes.ContainsKey(Way.UpStraight) == true && node.NearNodes[Way.UpStraight].Block == true;
-                bool haveUpLeftPassNode = node.NearNodes.ContainsKey(Way.UpLeftDiagonal) == true && node.NearNodes[Way.UpLeftDiagonal].Block == false;
+                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].Block == true;
+                bool haveUpLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].Block == false;
 
                 if (haveUpBlockNode && haveUpLeftPassNode) return node;
 
-                bool haveDownBlockNode = node.NearNodes.ContainsKey(Way.DownStraight) == true && node.NearNodes[Way.DownStraight].Block == true;
-                bool haveDownLeftPassNode = node.NearNodes.ContainsKey(Way.DownLeftDiagonal) == true && node.NearNodes[Way.DownLeftDiagonal].Block == false;
+                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].Block == true;
+                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].Block == false;
 
                 if (haveDownBlockNode && haveDownLeftPassNode) return node;
 
-                if (node.NearNodes.ContainsKey(Way.LeftStraight) == false || node.NearNodes[Way.LeftStraight].Block == true) return null;
+                if (node.HaveNodes[3] == false || node.NearNodes[3].Block == true) return null;
 
-                node = node.NearNodes[Way.LeftStraight]; // 위 조건을 만족하지 않으면 그대로 진행
+                node = node.NearNodes[3]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
             }
         }
 
         async Task<Node> MoveRightStraight(Node node, Node endNode)
         {
-            if (node == null || node.Block == true) return null;
-
-            Node originNode = node;
             _passListPoints.Add(node.WorldPos);
 
             // 오른쪽 경로가 있고 Block이 아닌 경우
@@ -258,27 +239,25 @@ namespace JPS
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveUpBlockNode = node.NearNodes.ContainsKey(Way.UpStraight) == true && node.NearNodes[Way.UpStraight].Block == true;
-                bool haveUpRightPassNode = node.NearNodes.ContainsKey(Way.UpRightDiagonal) == true && node.NearNodes[Way.UpRightDiagonal].Block == false;
+                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].Block == true;
+                bool haveUpRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].Block == false;
 
                 if (haveUpBlockNode && haveUpRightPassNode) return node;
 
-                bool haveDownBlockNode = node.NearNodes.ContainsKey(Way.DownStraight) == true && node.NearNodes[Way.DownStraight].Block == true;
-                bool haveDownRightPassNode = node.NearNodes.ContainsKey(Way.DownRightDiagonal) == true && node.NearNodes[Way.DownRightDiagonal].Block == false;
+                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].Block == true;
+                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].Block == false;
 
                 if (haveDownBlockNode && haveDownRightPassNode) return node;
 
-                if (node.NearNodes.ContainsKey(Way.RightStraight) == false || node.NearNodes[Way.RightStraight].Block == true) return null;
+                if (node.HaveNodes[1] == false || node.NearNodes[1].Block == true) return null;
 
-                node = node.NearNodes[Way.RightStraight]; // 위 조건을 만족하지 않으면 그대로 진행
+                node = node.NearNodes[1]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
             }
         }
 
         async Task<Node> MoveUpLeftDiagonal(Node node, Node endNode)
         {
-            if (node == null || node.Block == true) return null;
-
             _passListPoints.Add(node.WorldPos);
 
             // 현재 노드의 Block을 보는게 아니기 때문에 수정 필요함
@@ -286,41 +265,37 @@ namespace JPS
             while (true)
             {
                 await Task.Delay(_awaitDuration);
-                // 열린 노드 추가
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveRightBlockNode = node.NearNodes.ContainsKey(Way.RightStraight) == true && node.NearNodes[Way.RightStraight].Block == true;
-                bool haveUpperRightPassNode = node.NearNodes.ContainsKey(Way.UpRightDiagonal) == true && node.NearNodes[Way.UpRightDiagonal].Block == false;
+                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].Block == true;
+                bool haveUpperRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].Block == false;
 
                 if (haveRightBlockNode && haveUpperRightPassNode) return node;
 
-                bool haveDownBlockNode = node.NearNodes.ContainsKey(Way.DownStraight) == true && node.NearNodes[Way.DownStraight].Block == true;
-                bool haveDownLeftPassNode = node.NearNodes.ContainsKey(Way.DownLeftDiagonal) == true && node.NearNodes[Way.DownLeftDiagonal].Block == false;
+                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].Block == true;
+                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].Block == false;
 
                 if (haveDownBlockNode && haveDownLeftPassNode) return node;
 
                 Node leftNode;
                 leftNode = await MoveLeftStraight(node, endNode);
-
-                if (leftNode != null && _closedList.Contains(leftNode) == false && _openList.Contain(leftNode) == false) return node;
+                if (leftNode != null) return node;
 
                 Node upNode;
                 upNode = await MoveUpStraight(node, endNode);
 
-                if (upNode != null && _closedList.Contains(upNode) == false && _openList.Contain(upNode) == false) return node;
+                if (upNode != null) return node;
 
-                if (node.NearNodes.ContainsKey(Way.UpLeftDiagonal) == false || node.NearNodes[Way.UpLeftDiagonal].Block == true) return null;
+                if (node.HaveNodes[4] == false || node.NearNodes[4].Block == true) return null;
 
-                node = node.NearNodes[Way.UpLeftDiagonal]; // 위 조건을 만족하지 않으면 그대로 진행
+                node = node.NearNodes[4]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
             }
         }
 
         async Task<Node> MoveUpRightDiagonal(Node node, Node endNode)
         {
-            if (node == null || node.Block == true) return null;
-
             _passListPoints.Add(node.WorldPos);
 
             // 오른쪽 위 경로가 있고 Block이 아닌 경우
@@ -332,35 +307,33 @@ namespace JPS
 
                 // 열린 노드 추가
 
-                bool haveDownBlockNode = node.NearNodes.ContainsKey(Way.DownStraight) == true && node.NearNodes[Way.DownStraight].Block == true;
-                bool haveDownRightPassNode = node.NearNodes.ContainsKey(Way.DownRightDiagonal) == true && node.NearNodes[Way.DownRightDiagonal].Block == false;
+                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].Block == true;
+                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].Block == false;
 
                 if (haveDownBlockNode && haveDownRightPassNode) return node;
 
-                bool haveLeftBlockNode = node.NearNodes.ContainsKey(Way.LeftStraight) == true && node.NearNodes[Way.LeftStraight].Block == true;
-                bool haveUpperLeftPassNode = node.NearNodes.ContainsKey(Way.UpLeftDiagonal) == true && node.NearNodes[Way.UpLeftDiagonal].Block == false;
+                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].Block == true;
+                bool haveUpperLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].Block == false;
 
                 if (haveLeftBlockNode && haveUpperLeftPassNode) return node;
 
                 Node rightNode;
                 rightNode = await MoveRightStraight(node, endNode);
-                if (rightNode != null && _closedList.Contains(rightNode) == false && _openList.Contain(rightNode) == false) return node;
+                if (rightNode != null) return node;
 
                 Node upNode;
                 upNode = await MoveUpStraight(node, endNode);
-                if (upNode != null && _closedList.Contains(upNode) == false && _openList.Contain(upNode) == false) return node;
+                if (upNode != null) return node;
 
-                if (node.NearNodes.ContainsKey(Way.UpRightDiagonal) == false || node.NearNodes[Way.UpRightDiagonal].Block == true) return null;
+                if (node.HaveNodes[5] == false || node.NearNodes[5].Block == true) return null;
 
-                node = node.NearNodes[Way.UpRightDiagonal]; // 위 조건을 만족하지 않으면 그대로 진행
+                node = node.NearNodes[5]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
             }
         }
 
         async Task<Node> MoveDownLeftDiagonal(Node node, Node endNode)
         {
-            if (node == null || node.Block == true) return null;
-
             _passListPoints.Add(node.WorldPos);
 
             // 왼쪽 아래 경로가 있고 Block이 아닌 경우
@@ -370,35 +343,33 @@ namespace JPS
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveRightBlockNode = node.NearNodes.ContainsKey(Way.RightStraight) == true && node.NearNodes[Way.RightStraight].Block == true;
-                bool haveDownRightPassNode = node.NearNodes.ContainsKey(Way.DownRightDiagonal) == true && node.NearNodes[Way.DownRightDiagonal].Block == false;
+                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].Block == true;
+                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].Block == false;
 
                 if (haveRightBlockNode && haveDownRightPassNode) return node;
 
-                bool haveUpBlockNode = node.NearNodes.ContainsKey(Way.UpStraight) == true && node.NearNodes[Way.UpStraight].Block == true;
-                bool haveUpLeftPassNode = node.NearNodes.ContainsKey(Way.UpLeftDiagonal) == true && node.NearNodes[Way.UpLeftDiagonal].Block == false;
+                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].Block == true;
+                bool haveUpLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].Block == false;
 
                 if (haveUpBlockNode && haveUpLeftPassNode) return node;
 
                 Node leftNode;
                 leftNode = await MoveLeftStraight(node, endNode);
-                if (leftNode != null && _closedList.Contains(leftNode) == false && _openList.Contain(leftNode) == false) return node;
+                if (leftNode != null) return node;
 
                 Node downNode;
                 downNode = await MoveDownStraight(node, endNode);
-                if (downNode != null && _closedList.Contains(downNode) == false && _openList.Contain(downNode) == false) return node;
+                if (downNode != null) return node;
 
-                if (node.NearNodes.ContainsKey(Way.DownLeftDiagonal) == false || node.NearNodes[Way.DownLeftDiagonal].Block == true) return null;
+                if (node.HaveNodes[7] == false || node.NearNodes[7].Block == true) return null;
 
-                node = node.NearNodes[Way.DownLeftDiagonal]; // 위 조건을 만족하지 않으면 그대로 진행
+                node = node.NearNodes[7]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
             }
         }
 
         async Task<Node> MoveDownRightDiagonal(Node node, Node endNode)
         {
-            if (node == null || node.Block == true) return null;
-
             _passListPoints.Add(node.WorldPos);
 
             // 왼쪽 아래 경로가 있고 Block이 아닌 경우
@@ -408,52 +379,52 @@ namespace JPS
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveLeftBlockNode = node.NearNodes.ContainsKey(Way.LeftStraight) == true && node.NearNodes[Way.LeftStraight].Block == true;
-                bool haveDownLeftPassNode = node.NearNodes.ContainsKey(Way.DownLeftDiagonal) == true && node.NearNodes[Way.DownLeftDiagonal].Block == false;
+                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].Block == true;
+                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].Block == false;
 
                 if (haveLeftBlockNode && haveDownLeftPassNode) return node;
 
 
-                bool haveUpBlockNode = node.NearNodes.ContainsKey(Way.UpStraight) == true && node.NearNodes[Way.UpStraight].Block == true;
-                bool haveUpRightPassNode = node.NearNodes.ContainsKey(Way.UpRightDiagonal) == true && node.NearNodes[Way.UpRightDiagonal].Block == false;
+                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].Block == true;
+                bool haveUpRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].Block == false;
 
                 if (haveUpBlockNode && haveUpRightPassNode) return node;
 
                 Node rightNode;
                 rightNode = await MoveRightStraight(node, endNode);
-                if (rightNode != null && _closedList.Contains(rightNode) == false && _openList.Contain(rightNode) == false) return node;
+                if (rightNode != null) return node;
 
                 Node downNode;
                 downNode = await MoveDownStraight(node, endNode);
-                if (downNode != null && _closedList.Contains(downNode) == false && _openList.Contain(downNode) == false) return node;
+                if (downNode != null) return node;
 
-                if (node.NearNodes.ContainsKey(Way.DownRightDiagonal) == false || node.NearNodes[Way.DownRightDiagonal].Block == true) return null;
+                if (node.HaveNodes[6] == false || node.NearNodes[6].Block == true) return null;
 
-                node = node.NearNodes[Way.DownRightDiagonal]; // 위 조건을 만족하지 않으면 그대로 진행
+                node = node.NearNodes[6]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
             }
         }
 
-        async Task<Node> Move(Way way, Node node, Node endNode)
+        async Task<Node> Move(int way, Node node, Node endNode)
         {
             switch (way)
             {
-                case Way.UpStraight:
+                case 0:
                     return await MoveUpStraight(node, endNode);
-                case Way.DownStraight:
-                    return await MoveDownStraight(node, endNode);
-                case Way.LeftStraight:
-                    return await MoveLeftStraight(node, endNode);
-                case Way.RightStraight:
+                case 1:
                     return await MoveRightStraight(node, endNode);
-                case Way.UpLeftDiagonal:
+                case 2:
+                    return await MoveDownStraight(node, endNode);
+                case 3:
+                    return await MoveLeftStraight(node, endNode);
+                case 4:
                     return await MoveUpLeftDiagonal(node, endNode);
-                case Way.UpRightDiagonal:
+                case 5:
                     return await MoveUpRightDiagonal(node, endNode);
-                case Way.DownLeftDiagonal:
-                    return await MoveDownLeftDiagonal(node, endNode);
-                case Way.DownRightDiagonal:
+                case 6:
                     return await MoveDownRightDiagonal(node, endNode);
+                case 7:
+                    return await MoveDownLeftDiagonal(node, endNode);
                 default:
                     return null;
             }

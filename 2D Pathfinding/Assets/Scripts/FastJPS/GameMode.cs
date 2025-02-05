@@ -3,15 +3,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 
-namespace JPS
+namespace FastJPS
 {
     public class GameMode : MonoBehaviour
     {
         [SerializeField] Transform _startPoint;
         [SerializeField] Transform _endPoint;
 
-        [SerializeField] JPS _jps;
-        [SerializeField] JPSNoDelay _jpsNoDelay;
+        [SerializeField] FastJPSNoDelay _fastJps;
         [SerializeField] GridComponent _gridComponent;
 
         List<Vector2> _points;
@@ -21,30 +20,17 @@ namespace JPS
         private void Start()
         {
             _points = new List<Vector2>();
-            _gridComponent.Initialize(_jps);
-            _gridComponent.Initialize(_jpsNoDelay);
+            _gridComponent.Initialize(_fastJps);
         }
 
-        //private void Update()
-        //{
-        //    if (_nowFind == true) return;
-
-        //    if (Input.GetMouseButtonDown(0))
-        //    {
-        //        _nowFind = true;
-        //        _points = _jpsNoDelay.FindPath(_startPoint.position, _endPoint.position);
-        //        _nowFind = false;
-        //    }
-        //}
-
-        private async void Update()
+        private void Update()
         {
             if (_nowFind == true) return;
 
             if (Input.GetMouseButtonDown(0))
             {
                 _nowFind = true;
-                _points = await _jps.FindPath(_startPoint.position, _endPoint.position);
+                _points = _fastJps.FindPath(_startPoint.position, _endPoint.position);
                 _nowFind = false;
             }
         }

@@ -10,7 +10,6 @@ namespace AStar
         [SerializeField] Transform _startPoint;
         [SerializeField] Transform _endPoint;
 
-        [SerializeField] AStar _aStar;
         [SerializeField] AStarNoDelay _aStarNoDelay;
         [SerializeField] GridComponent _gridComponent;
 
@@ -21,21 +20,8 @@ namespace AStar
         private void Start()
         {
             _points = new List<Vector2>();
-            _gridComponent.Initialize(_aStar);
             _gridComponent.Initialize(_aStarNoDelay);
         }
-
-        //private async void Update()
-        //{
-        //    if (_nowFind == true) return;
-
-        //    if (Input.GetMouseButtonDown(0))
-        //    {
-        //        _nowFind = true;
-        //        _points = await _pathfinder.FindPathWithProcedure(_startPoint.position, _endPoint.position, 5);
-        //        _nowFind = false;
-        //    }
-        //}
 
         private void Update()
         {

@@ -1,11 +1,29 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using Debug = UnityEngine.Debug;
 
-namespace JPS
+namespace FastJPS
 {
+    // ↖ ↑ ↗  5 1 6
+    // ←    →  4 0 2
+    // ↙ ↓ ↘  8 3 7
+
+    //public enum Way
+    //{
+    //    UpStraight, // 0
+    //    RightStraight, // 1
+    //    DownStraight, // 2
+    //    LeftStraight, // 3
+
+    //    UpLeftDiagonal, // 4
+    //    UpRightDiagonal, // 5
+    //    DownRightDiagonal, // 6
+    //    DownLeftDiagonal, // 7
+    //}
+
     [Serializable]
     public struct Grid2D
     {
@@ -39,10 +57,12 @@ namespace JPS
         public Node ReturnNode(Grid2D grid) { return _nodes[grid.Row, grid.Column]; }
         public Node ReturnNode(int r, int c) { return _nodes[r, c]; }
 
+        Vector2Int _bottomIndex;
+
         public Vector2 ReturnClampedRange(Vector2 pos)
         {
             Vector2 topLeftPos = ReturnNode(0, 0).WorldPos;
-            Vector2 bottomRightPos = ReturnNode(_nodes.GetLength(0) - 1, _nodes.GetLength(1) - 1).WorldPos;
+            Vector2 bottomRightPos = ReturnNode(_gridSize.Row - 1, _gridSize.Column - 1).WorldPos;
 
             // 반올림하고 범위 안에 맞춰줌
             // 이 부분은 GridSize 바뀌면 수정해야함
@@ -62,33 +82,82 @@ namespace JPS
             return new Grid2D(r, c);
         }
 
-        public Dictionary<Way, Grid2D> _direction = new Dictionary<Way, Grid2D>()
-        {
-            { Way.UpStraight, new Grid2D(-1, 0) }, // r, c
-            { Way.DownStraight, new Grid2D(1, 0) },
-            { Way.LeftStraight, new Grid2D(0, -1) },
-            { Way.RightStraight, new Grid2D(0, 1) },
+        //public enum Way
+        //{
+        //    UpStraight,
+        //    RightStraight,
+        //    DownStraight,
+        //    LeftStraight,
 
-            { Way.UpLeftDiagonal, new Grid2D(-1, -1) }, // r, c
-            { Way.UpRightDiagonal, new Grid2D(-1, 1) },
-            { Way.DownLeftDiagonal, new Grid2D(1, -1) },
-            { Way.DownRightDiagonal, new Grid2D(1, 1) },
+        //    UpLeftDiagonal,
+        //    UpRightDiagonal,
+        //    DownRightDiagonal,
+        //    DownLeftDiagonal,
+        //}
+
+        // ↖ ↑ ↗  5 1 6
+        // ←    →  4 0 2
+        // ↙ ↓ ↘  8 3 7
+
+        Grid2D[] _direction = 
+        {
+            new Grid2D(-1, 0), // 1
+            new Grid2D(0, 1), // 2
+            new Grid2D(1, 0), // 3
+            new Grid2D(0, -1), // 4
+
+            new Grid2D(-1, -1), // 5
+            new Grid2D(-1, 1), // 6
+            new Grid2D(1, 1), // 7
+            new Grid2D(1, -1) // 8
         };
 
-        public Dictionary<Way, Node> GetDirectionInfo(Grid2D index)
+        public Tuple<bool[], Node[]> GetDirectionInfo(Grid2D index)
         {
-            Dictionary<Way, Node> nearNodes = new Dictionary<Way, Node>();
+            int directionSize = _direction.Length;
 
-            foreach (var item in _direction)
+            bool[] haveNodes = new bool[directionSize];
+            Node[] nearNodes = new Node[directionSize];
+
+            for (int i = 0; i < directionSize; i++)
             {
-                Grid2D newGrid = new Grid2D(index.Row + item.Value.Row, index.Column + item.Value.Column);
+                Grid2D newGrid = new Grid2D(index.Row + _direction[i].Row, index.Column + _direction[i].Column);
                 bool isOutOfRange = IsOutOfRange(newGrid);
-                if (isOutOfRange == true) continue;
+                if (isOutOfRange == true)
+                {
+                    haveNodes[i] = false;
+                    continue;
+                }
 
-                nearNodes.Add(item.Key, ReturnNode(newGrid));
+                nearNodes[i] = ReturnNode(newGrid);
+                haveNodes[i] = true;
             }
 
-            return nearNodes;
+            return new Tuple<bool[], Node[]>(haveNodes, nearNodes);
+        }
+
+        public Tuple<bool[], Node[]> GetNeighborInfo(Grid2D index)
+        {
+            int directionSize = _direction.Length;
+
+            bool[] haveNodes = new bool[directionSize];
+            Node[] nearNodes = new Node[directionSize];
+
+            for (int i = 0; i < directionSize; i++)
+            {
+                Grid2D newGrid = new Grid2D(index.Row + _direction[i].Row, index.Column + _direction[i].Column);
+                bool isOutOfRange = IsOutOfRange(newGrid);
+                if (isOutOfRange == true)
+                {
+                    haveNodes[i] = false;
+                    continue;
+                }
+
+                nearNodes[i] = ReturnNode(newGrid);
+                haveNodes[i] = true;
+            }
+
+            return new Tuple<bool[], Node[]>(haveNodes, nearNodes);
         }
 
 
@@ -125,7 +194,9 @@ namespace JPS
             {
                 for (int j = 0; j < _gridSize.Column; j++)
                 {
-                    _nodes[i, j].NearNodes = GetDirectionInfo(new Grid2D(i, j));
+                    Tuple<bool[], Node[]> nodeDatas = GetDirectionInfo(new Grid2D(i, j));
+                    _nodes[i, j].HaveNodes = nodeDatas.Item1;
+                    _nodes[i, j].NearNodes = nodeDatas.Item2;
                 }
             }
 
@@ -162,7 +233,7 @@ namespace JPS
             }
         }
 
-        public void Initialize(JPSNoDelay pathfinder)
+        public void Initialize(FastJPS pathfinder)
         {
             _groundTile.CompressBounds(); // 타일의 바운더리를 맞춰준다.
             _wallTile.CompressBounds(); // 타일의 바운더리를 맞춰준다.
@@ -185,7 +256,7 @@ namespace JPS
             pathfinder.Initialize(this);
         }
 
-        public void Initialize(JPS pathfinder)
+        public void Initialize(FastJPSNoDelay pathfinder)
         {
             _groundTile.CompressBounds(); // 타일의 바운더리를 맞춰준다.
             _wallTile.CompressBounds(); // 타일의 바운더리를 맞춰준다.
