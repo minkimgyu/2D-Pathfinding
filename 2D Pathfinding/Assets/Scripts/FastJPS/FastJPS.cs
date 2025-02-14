@@ -5,6 +5,13 @@ using UnityEngine;
 
 namespace FastJPS
 {
+    public enum Size
+    {
+        x1,
+        x2,
+        x3,
+    }
+
     public class FastJPS : MonoBehaviour
     {
         Func<Vector2, Grid2D> ReturnNodeIndex;
@@ -15,6 +22,8 @@ namespace FastJPS
         Heap<Node> _openList = new Heap<Node>(maxSize);
         HashSet<Node> _closedList = new HashSet<Node>();
 
+        [SerializeField] Size _size = Size.x1;
+
         public void Initialize(GridComponent gridComponent)
         {
             ReturnNodeIndex = gridComponent.ReturnNodeIndex;
@@ -23,11 +32,79 @@ namespace FastJPS
 
         List<Vector2> ConvertNodeToV2(Stack<Node> stackNode)
         {
+            Node beforeNode = null;
+
             List<Vector2> points = new List<Vector2>();
             while (stackNode.Count > 0)
             {
                 Node node = stackNode.Pop();
+
+                if(beforeNode != null)
+                {
+                    // 인덱스가 대각선인 경우 
+                    // 좌우를 비교하고 없는 쪽으로 추가 경로 연결
+                    int row = node.Index.Row - beforeNode.Index.Row;
+                    int col = node.Index.Column - beforeNode.Index.Column;
+
+                    // 기울기에 따라 적용
+                    if (Mathf.Abs(row) == Mathf.Abs(col))
+                    {
+                        row /= Mathf.Abs(row);
+                        col /= Mathf.Abs(col);
+                    }
+
+                    if (row == 1 && col == 1)
+                    {
+                        // 중간에 경로 추가
+                        if (beforeNode.NearNodes[1].IsBlock(_size))
+                        {
+                            points.Add(beforeNode.NearNodes[2].WorldPos);
+                        }
+                        else if(beforeNode.NearNodes[2].IsBlock(_size))
+                        {
+                            points.Add(beforeNode.NearNodes[1].WorldPos);
+                        }
+                    }
+                    else if (row == -1 && col == 1)
+                    {
+                        // 중간에 경로 추가
+                        if (beforeNode.NearNodes[0].IsBlock(_size))
+                        {
+                            points.Add(beforeNode.NearNodes[1].WorldPos);
+                        }
+                        else if (beforeNode.NearNodes[1].IsBlock(_size))
+                        {
+                            points.Add(beforeNode.NearNodes[0].WorldPos);
+                        }
+                    }
+                    else if (row == 1 && col == -1)
+                    {
+                        // 중간에 경로 추가
+                        if (beforeNode.NearNodes[0].IsBlock(_size))
+                        {
+                            points.Add(beforeNode.NearNodes[1].WorldPos);
+                        }
+                        else if (beforeNode.NearNodes[1].IsBlock(_size))
+                        {
+                            points.Add(beforeNode.NearNodes[0].WorldPos);
+                        }
+                    }
+                    else if (row == -1 && col == -1)
+                    {
+                        // 중간에 경로 추가
+                        if (beforeNode.NearNodes[0].IsBlock(_size))
+                        {
+                            points.Add(beforeNode.NearNodes[3].WorldPos);
+                        }
+                        else if (beforeNode.NearNodes[3].IsBlock(_size))
+                        {
+                            points.Add(beforeNode.NearNodes[0].WorldPos);
+                        }
+                    }
+                }
+
                 points.Add(node.WorldPos);
+                beforeNode = node;
             }
 
             return points;
@@ -92,7 +169,7 @@ namespace FastJPS
 
             for (int i = 0; i < 8; i++)
             {
-                if (haveDirections[i] == false || directions[i].Block == true) continue;
+                if (haveDirections[i] == false || directions[i].IsBlock(_size) == true) continue;
                 await UpdateJumpPoints(await Move(i, directions[i], endNode), targetNode, endNode);
             }
 
@@ -148,24 +225,24 @@ namespace FastJPS
         {
             _passListPoints.Add(node.WorldPos);
 
-            // 위쪽 경로가 있고 Block이 아닌 경우
+            // 위쪽 경로가 있고 IsBlock(_size)이 아닌 경우
             while (true)
             {
                 await Task.Delay(_awaitDuration);
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].Block == true;
-                bool haveUpperLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].Block == false;
+                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].IsBlock(_size) == true;
+                bool haveUpperLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].IsBlock(_size) == false;
 
                 if (haveLeftBlockNode && haveUpperLeftPassNode) return node;
 
-                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].Block == true;
-                bool haveUpperRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].Block == false;
+                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].IsBlock(_size) == true;
+                bool haveUpperRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].IsBlock(_size) == false;
 
                 if (haveRightBlockNode && haveUpperRightPassNode) return node;
 
-                if (node.HaveNodes[0] == false || node.NearNodes[0].Block == true) return null;
+                if (node.HaveNodes[0] == false || node.NearNodes[0].IsBlock(_size) == true) return null;
 
                 node = node.NearNodes[0]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
@@ -176,24 +253,24 @@ namespace FastJPS
         {
             _passListPoints.Add(node.WorldPos);
 
-            // 아래쪽 경로가 있고 Block이 아닌 경우
+            // 아래쪽 경로가 있고 IsBlock(_size)이 아닌 경우
             while (true)
             {
                 await Task.Delay(_awaitDuration);
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].Block == true;
-                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].Block == false;
+                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].IsBlock(_size) == true;
+                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].IsBlock(_size) == false;
 
                 if (haveLeftBlockNode && haveDownLeftPassNode) return node;
 
-                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].Block == true;
-                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].Block == false;
+                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].IsBlock(_size) == true;
+                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].IsBlock(_size) == false;
 
                 if (haveRightBlockNode && haveDownRightPassNode) return node;
 
-                if (node.HaveNodes[2] == false || node.NearNodes[2].Block == true) return null;
+                if (node.HaveNodes[2] == false || node.NearNodes[2].IsBlock(_size) == true) return null;
 
                 node = node.NearNodes[2]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
@@ -204,24 +281,24 @@ namespace FastJPS
         {
             _passListPoints.Add(node.WorldPos);
 
-            // 왼쪽 경로가 있고 Block이 아닌 경우
+            // 왼쪽 경로가 있고 IsBlock(_size)이 아닌 경우
             while (true)
             {
                 await Task.Delay(_awaitDuration);
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].Block == true;
-                bool haveUpLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].Block == false;
+                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].IsBlock(_size) == true;
+                bool haveUpLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].IsBlock(_size) == false;
 
                 if (haveUpBlockNode && haveUpLeftPassNode) return node;
 
-                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].Block == true;
-                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].Block == false;
+                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].IsBlock(_size) == true;
+                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].IsBlock(_size) == false;
 
                 if (haveDownBlockNode && haveDownLeftPassNode) return node;
 
-                if (node.HaveNodes[3] == false || node.NearNodes[3].Block == true) return null;
+                if (node.HaveNodes[3] == false || node.NearNodes[3].IsBlock(_size) == true) return null;
 
                 node = node.NearNodes[3]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
@@ -232,24 +309,24 @@ namespace FastJPS
         {
             _passListPoints.Add(node.WorldPos);
 
-            // 오른쪽 경로가 있고 Block이 아닌 경우
+            // 오른쪽 경로가 있고 IsBlock(_size)이 아닌 경우
             while (true)
             {
                 await Task.Delay(_awaitDuration);
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].Block == true;
-                bool haveUpRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].Block == false;
+                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].IsBlock(_size) == true;
+                bool haveUpRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].IsBlock(_size) == false;
 
                 if (haveUpBlockNode && haveUpRightPassNode) return node;
 
-                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].Block == true;
-                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].Block == false;
+                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].IsBlock(_size) == true;
+                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].IsBlock(_size) == false;
 
                 if (haveDownBlockNode && haveDownRightPassNode) return node;
 
-                if (node.HaveNodes[1] == false || node.NearNodes[1].Block == true) return null;
+                if (node.HaveNodes[1] == false || node.NearNodes[1].IsBlock(_size) == true) return null;
 
                 node = node.NearNodes[1]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
@@ -260,21 +337,21 @@ namespace FastJPS
         {
             _passListPoints.Add(node.WorldPos);
 
-            // 현재 노드의 Block을 보는게 아니기 때문에 수정 필요함
-            // 왼쪽 위 경로가 있고 Block이 아닌 경우
+            // 현재 노드의 IsBlock(_size)을 보는게 아니기 때문에 수정 필요함
+            // 왼쪽 위 경로가 있고 IsBlock(_size)이 아닌 경우
             while (true)
             {
                 await Task.Delay(_awaitDuration);
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].Block == true;
-                bool haveUpperRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].Block == false;
+                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].IsBlock(_size) == true;
+                bool haveUpperRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].IsBlock(_size) == false;
 
                 if (haveRightBlockNode && haveUpperRightPassNode) return node;
 
-                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].Block == true;
-                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].Block == false;
+                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].IsBlock(_size) == true;
+                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].IsBlock(_size) == false;
 
                 if (haveDownBlockNode && haveDownLeftPassNode) return node;
 
@@ -287,7 +364,7 @@ namespace FastJPS
 
                 if (upNode != null) return node;
 
-                if (node.HaveNodes[4] == false || node.NearNodes[4].Block == true) return null;
+                if (node.HaveNodes[4] == false || node.NearNodes[4].IsBlock(_size) == true) return null;
 
                 node = node.NearNodes[4]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
@@ -298,7 +375,7 @@ namespace FastJPS
         {
             _passListPoints.Add(node.WorldPos);
 
-            // 오른쪽 위 경로가 있고 Block이 아닌 경우
+            // 오른쪽 위 경로가 있고 IsBlock(_size)이 아닌 경우
             while (true)
             {
                 await Task.Delay(_awaitDuration);
@@ -307,13 +384,13 @@ namespace FastJPS
 
                 // 열린 노드 추가
 
-                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].Block == true;
-                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].Block == false;
+                bool haveDownBlockNode = node.HaveNodes[2] == true && node.NearNodes[2].IsBlock(_size) == true;
+                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].IsBlock(_size) == false;
 
                 if (haveDownBlockNode && haveDownRightPassNode) return node;
 
-                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].Block == true;
-                bool haveUpperLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].Block == false;
+                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].IsBlock(_size) == true;
+                bool haveUpperLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].IsBlock(_size) == false;
 
                 if (haveLeftBlockNode && haveUpperLeftPassNode) return node;
 
@@ -325,7 +402,7 @@ namespace FastJPS
                 upNode = await MoveUpStraight(node, endNode);
                 if (upNode != null) return node;
 
-                if (node.HaveNodes[5] == false || node.NearNodes[5].Block == true) return null;
+                if (node.HaveNodes[5] == false || node.NearNodes[5].IsBlock(_size) == true) return null;
 
                 node = node.NearNodes[5]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
@@ -336,20 +413,20 @@ namespace FastJPS
         {
             _passListPoints.Add(node.WorldPos);
 
-            // 왼쪽 아래 경로가 있고 Block이 아닌 경우
+            // 왼쪽 아래 경로가 있고 IsBlock(_size)이 아닌 경우
             while (true)
             {
                 await Task.Delay(_awaitDuration);
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].Block == true;
-                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].Block == false;
+                bool haveRightBlockNode = node.HaveNodes[1] == true && node.NearNodes[1].IsBlock(_size) == true;
+                bool haveDownRightPassNode = node.HaveNodes[6] == true && node.NearNodes[6].IsBlock(_size) == false;
 
                 if (haveRightBlockNode && haveDownRightPassNode) return node;
 
-                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].Block == true;
-                bool haveUpLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].Block == false;
+                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].IsBlock(_size) == true;
+                bool haveUpLeftPassNode = node.HaveNodes[4] == true && node.NearNodes[4].IsBlock(_size) == false;
 
                 if (haveUpBlockNode && haveUpLeftPassNode) return node;
 
@@ -361,7 +438,7 @@ namespace FastJPS
                 downNode = await MoveDownStraight(node, endNode);
                 if (downNode != null) return node;
 
-                if (node.HaveNodes[7] == false || node.NearNodes[7].Block == true) return null;
+                if (node.HaveNodes[7] == false || node.NearNodes[7].IsBlock(_size) == true) return null;
 
                 node = node.NearNodes[7]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);
@@ -372,21 +449,21 @@ namespace FastJPS
         {
             _passListPoints.Add(node.WorldPos);
 
-            // 왼쪽 아래 경로가 있고 Block이 아닌 경우
+            // 왼쪽 아래 경로가 있고 IsBlock(_size)이 아닌 경우
             while (true)
             {
                 await Task.Delay(_awaitDuration);
 
                 if (node == endNode) return node; // 목표 지점에 도달한 경우
 
-                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].Block == true;
-                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].Block == false;
+                bool haveLeftBlockNode = node.HaveNodes[3] == true && node.NearNodes[3].IsBlock(_size) == true;
+                bool haveDownLeftPassNode = node.HaveNodes[7] == true && node.NearNodes[7].IsBlock(_size) == false;
 
                 if (haveLeftBlockNode && haveDownLeftPassNode) return node;
 
 
-                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].Block == true;
-                bool haveUpRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].Block == false;
+                bool haveUpBlockNode = node.HaveNodes[0] == true && node.NearNodes[0].IsBlock(_size) == true;
+                bool haveUpRightPassNode = node.HaveNodes[5] == true && node.NearNodes[5].IsBlock(_size) == false;
 
                 if (haveUpBlockNode && haveUpRightPassNode) return node;
 
@@ -398,7 +475,7 @@ namespace FastJPS
                 downNode = await MoveDownStraight(node, endNode);
                 if (downNode != null) return node;
 
-                if (node.HaveNodes[6] == false || node.NearNodes[6].Block == true) return null;
+                if (node.HaveNodes[6] == false || node.NearNodes[6].IsBlock(_size) == true) return null;
 
                 node = node.NearNodes[6]; // 위 조건을 만족하지 않으면 그대로 진행
                 _passListPoints.Add(node.WorldPos);

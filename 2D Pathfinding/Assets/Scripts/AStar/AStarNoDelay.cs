@@ -99,6 +99,19 @@ namespace AStar
             return null;
         }
 
+        static readonly float SQRT_2_MINUS_1 = Mathf.Sqrt(2) - 1.0f;
+
+        internal static int OctileHeuristic(int curr_row, int curr_column, int goal_row, int goal_column)
+        {
+            int heuristic;
+            int row_dist = Mathf.Abs(goal_row - curr_row);
+            int column_dist = Mathf.Abs(goal_column - curr_column); // 휴리스틱 값이 음수가 나오는 문제 발생
+
+            heuristic = (int)(Mathf.Max(row_dist, column_dist) + SQRT_2_MINUS_1 * Mathf.Min(row_dist, column_dist));
+
+            return heuristic;
+        }
+
         void AddNearGridInList(Node targetNode, Node endNode)
         {
             List<Node> nearNodes = targetNode.NearNodes;
@@ -116,7 +129,11 @@ namespace AStar
                 if (_closedList.Contains(nearNode)) continue; // 통과하지 못하거나 닫힌 리스트에 있는 경우 다음 그리드 탐색
 
                 // 이 부분 중요! --> 거리를 측정해서 업데이트 하지 않고 계속 더해주는 방식으로 진행해야함
-                float moveCost = targetNode.G + Vector2.Distance(targetNode.WorldPos, nearNode.WorldPos);
+
+
+                
+
+                float moveCost = targetNode.G + OctileHeuristic(targetNode.Index.Row, targetNode.Index.Column, nearNode.Index.Row, nearNode.Index.Column); // MathF.Abs(targetNode.WorldPos.x - nearNode.WorldPos.x) + MathF.Abs(targetNode.WorldPos.y - nearNode.WorldPos.y); // Vector2.Distance(targetNode.WorldPos, nearNode.WorldPos);
                 bool isOpenListContainNearGrid = _openList.Contain(nearNode);
 
                 // 오픈 리스트에 있더라도 G 값이 변경된다면 다시 리셋해주기
@@ -124,7 +141,7 @@ namespace AStar
                 {
                     // 여기서 grid 값 할당 필요
                     nearNode.G = moveCost;
-                    nearNode.H = Vector2.Distance(nearNode.WorldPos, endNode.WorldPos); // targetNode
+                    nearNode.H = OctileHeuristic(nearNode.Index.Row, nearNode.Index.Column, endNode.Index.Row, endNode.Index.Column); //MathF.Abs(nearNode.WorldPos.x - endNode.WorldPos.x) + MathF.Abs(nearNode.WorldPos.y - endNode.WorldPos.y); // Vector2.Distance(nearNode.WorldPos, endNode.WorldPos); //  //  // targetNode
                     nearNode.ParentNode = targetNode;
                 }
 

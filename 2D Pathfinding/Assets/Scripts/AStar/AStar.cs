@@ -16,6 +16,8 @@ namespace AStar
         Heap<Node> _openList = new Heap<Node>(maxSize);
         HashSet<Node> _closedList = new HashSet<Node>();
 
+        [SerializeField] int _awaitDuration = 30;
+
         public void Initialize(GridComponent gridComponent)
         {
             ReturnNodeIndex = gridComponent.ReturnNodeIndex;
@@ -35,7 +37,7 @@ namespace AStar
         }
 
         // 가장 먼저 반올림을 통해 가장 가까운 노드를 찾는다.
-        public async Task<List<Vector2>> FindPathWithProcedure(Vector2 startPos, Vector2 targetPos, int delay)
+        public async Task<List<Vector2>> FindPath(Vector2 startPos, Vector2 targetPos)
         {
             _openListPoints.Clear();
             _closeListPoints.Clear();
@@ -55,7 +57,7 @@ namespace AStar
 
             while (_openList.Count > 0)
             {
-                await Task.Delay(delay);
+                await Task.Delay(_awaitDuration);
 
                 // 시작의 경우 제외해줘야함
                 Node targetNode = _openList.ReturnMin();

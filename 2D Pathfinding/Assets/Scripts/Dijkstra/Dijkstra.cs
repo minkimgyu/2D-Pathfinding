@@ -24,7 +24,7 @@ namespace Dijkstra
         Heap<Node> _heap;
         HashSet<Node> _visited;
 
-        public void FindPathWithProcedure(Vector2Int index, int delay = 0)
+        public void FindPathWithProcedure(Vector2Int index)
         {
             _gridComponent.ResetNodeWeight();
             Node startNode = _gridComponent.ReturnNode(index);

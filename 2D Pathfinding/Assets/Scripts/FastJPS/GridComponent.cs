@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using Debug = UnityEngine.Debug;
@@ -99,6 +98,10 @@ namespace FastJPS
         // ¡ç    ¡æ  4 0 2
         // ¢× ¡é ¢Ù  8 3 7
 
+        // ¢Ø ¡è ¢Ö  4 0 5
+        // ¡ç    ¡æ  3   1
+        // ¢× ¡é ¢Ù  7 2 6
+
         Grid2D[] _direction = 
         {
             new Grid2D(-1, 0), // 1
@@ -112,12 +115,13 @@ namespace FastJPS
             new Grid2D(1, -1) // 8
         };
 
-        public Tuple<bool[], Node[]> GetDirectionInfo(Grid2D index)
+        public Tuple<bool[], Node[], bool> GetNeighborInfo(Grid2D index)
         {
             int directionSize = _direction.Length;
 
             bool[] haveNodes = new bool[directionSize];
             Node[] nearNodes = new Node[directionSize];
+            bool haveNearBlockNode = false;
 
             for (int i = 0; i < directionSize; i++)
             {
@@ -130,34 +134,14 @@ namespace FastJPS
                 }
 
                 nearNodes[i] = ReturnNode(newGrid);
-                haveNodes[i] = true;
-            }
-
-            return new Tuple<bool[], Node[]>(haveNodes, nearNodes);
-        }
-
-        public Tuple<bool[], Node[]> GetNeighborInfo(Grid2D index)
-        {
-            int directionSize = _direction.Length;
-
-            bool[] haveNodes = new bool[directionSize];
-            Node[] nearNodes = new Node[directionSize];
-
-            for (int i = 0; i < directionSize; i++)
-            {
-                Grid2D newGrid = new Grid2D(index.Row + _direction[i].Row, index.Column + _direction[i].Column);
-                bool isOutOfRange = IsOutOfRange(newGrid);
-                if (isOutOfRange == true)
+                if(nearNodes[i].Block == true)
                 {
-                    haveNodes[i] = false;
-                    continue;
+                    haveNearBlockNode = true;
                 }
-
-                nearNodes[i] = ReturnNode(newGrid);
                 haveNodes[i] = true;
             }
 
-            return new Tuple<bool[], Node[]>(haveNodes, nearNodes);
+            return new Tuple<bool[], Node[], bool>(haveNodes, nearNodes, haveNearBlockNode);
         }
 
 
@@ -194,9 +178,10 @@ namespace FastJPS
             {
                 for (int j = 0; j < _gridSize.Column; j++)
                 {
-                    Tuple<bool[], Node[]> nodeDatas = GetDirectionInfo(new Grid2D(i, j));
+                    Tuple<bool[], Node[], bool> nodeDatas = GetNeighborInfo(new Grid2D(i, j));
                     _nodes[i, j].HaveNodes = nodeDatas.Item1;
                     _nodes[i, j].NearNodes = nodeDatas.Item2;
+                    _nodes[i, j].HaveNearBlockNode = nodeDatas.Item3;
                 }
             }
 

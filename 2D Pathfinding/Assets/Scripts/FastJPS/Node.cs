@@ -22,8 +22,23 @@ namespace FastJPS
         Grid2D _index; // 그리드 상 인덱스
         public Grid2D Index { get { return _index; } }
 
-        bool _block;
+        bool _block; // Block 노드인지 확인
         public bool Block { get { return _block; } }
+
+        bool _haveNearBlockNode; // 주변에 Block 노드를 가지고 있는지 확인
+        public bool HaveNearBlockNode { set { _haveNearBlockNode = value; } }
+
+        public bool IsBlock(Size size)
+        {
+            if(size == Size.x1)
+            {
+                return _block;
+            }
+            else
+            {
+                return _haveNearBlockNode;
+            }
+        }
 
         public Node[] NearNodes { get; set; } = new Node[8];
         public bool[] HaveNodes { get; set; } = new bool[8];
