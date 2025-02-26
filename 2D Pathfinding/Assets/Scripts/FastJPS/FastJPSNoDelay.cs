@@ -1,4 +1,4 @@
-//#define Draw_Progress // 활성화
+#define Draw_Progress // 활성화
 
 using System.Collections.Generic;
 using System.Threading.Tasks;

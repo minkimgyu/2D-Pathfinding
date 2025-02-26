@@ -274,7 +274,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _size: 0
-  _awaitDuration: 1
+  _awaitDuration: 10
 --- !u!114 &1499827805
 MonoBehaviour:
   m_ObjectHideFlags: 0
