@@ -5,6 +5,14 @@ using UnityEngine.Tilemaps;
 
 namespace JPSPlus
 {
+    public enum Size
+    {
+        x1,
+        x2,
+        x3,
+    }
+
+
     public class Node : IItem<Node>
     {
         public Node(Vector2 worldPos, Grid2D index, bool block)
@@ -23,7 +31,23 @@ namespace JPSPlus
         public Grid2D Index { get { return _index; } }
 
         bool _isBlock; // Block 노드인지 확인
-        public bool IsBlock { get { return _isBlock; } }
+
+        public bool IsBlock(Size size)
+        {
+            if (size == Size.x1)
+            {
+                return _isBlock;
+            }
+            else
+            {
+                return _haveNearBlockNode;
+            }
+        }
+
+
+        bool _haveNearBlockNode; // 주변에 Block 노드를 가지고 있는지 확인
+        public bool HaveNearBlockNode { set { _haveNearBlockNode = value; } }
+
 
         bool _isJumpPoint;
         public bool IsJumpPoint { get => _isJumpPoint; set => _isJumpPoint = value; }

@@ -46,6 +46,8 @@ namespace JPSPlus
         Vector2 _topLeftWorldPoint;
         Vector2Int _topLeftLocalPoint;
 
+        [SerializeField] Size _size = Size.x1;
+
         Grid2D _gridSize;
 
         List<Vector2> _points;
@@ -91,13 +93,15 @@ namespace JPSPlus
             new Grid2D(-1, -1), // NORTH_WEST
         };
 
-        public Tuple<bool[], Node[], float[]> GetNeighborInfo(Grid2D index)
+        public Tuple<bool[], Node[], float[], bool> GetNeighborInfo(Grid2D index)
         {
             int directionSize = _direction.Length;
 
             bool[] haveNodes = new bool[directionSize];
             Node[] nearNodes = new Node[directionSize];
             float[] nearNodesDistance = new float[directionSize];
+
+            bool haveNearBlockNode = false;
 
             Node currentNode = ReturnNode(new Grid2D(index.Row, index.Column));
 
@@ -112,11 +116,15 @@ namespace JPSPlus
                 }
 
                 nearNodes[i] = ReturnNode(newGrid);
+                if (nearNodes[i].IsBlock(Size.x1) == true)
+                {
+                    haveNearBlockNode = true;
+                }
                 nearNodesDistance[i] = Vector2.Distance(nearNodes[i].WorldPos, currentNode.WorldPos);
                 haveNodes[i] = true;
             }
 
-            return new Tuple<bool[], Node[], float[]>(haveNodes, nearNodes, nearNodesDistance);
+            return new Tuple<bool[], Node[], float[], bool>(haveNodes, nearNodes, nearNodesDistance, haveNearBlockNode);
         }
 
 
@@ -153,10 +161,11 @@ namespace JPSPlus
             {
                 for (int j = 0; j < _gridSize.Column; j++)
                 {
-                    Tuple<bool[], Node[], float[]> nodeDatas = GetNeighborInfo(new Grid2D(i, j));
+                    Tuple<bool[], Node[], float[], bool> nodeDatas = GetNeighborInfo(new Grid2D(i, j));
                     _nodes[i, j].HaveNodes = nodeDatas.Item1;
                     _nodes[i, j].NearNodes = nodeDatas.Item2;
                     _nodes[i, j].NearNodeDistances = nodeDatas.Item3;
+                    _nodes[i, j].HaveNearBlockNode = nodeDatas.Item4;
                 }
             }
 
@@ -185,7 +194,7 @@ namespace JPSPlus
             {
                 for (int j = 0; j < _gridSize.Column; j++)
                 {
-                    if (_nodes[i, j].IsBlock)
+                    if (_nodes[i, j].IsBlock(_size))
                     {
                         Gizmos.color = new Color(1, 0, 0, 0.1f);
                         Gizmos.DrawCube(_nodes[i, j].WorldPos, Vector3.one);
@@ -280,7 +289,7 @@ namespace JPSPlus
                 {
                     for (int j = 0; j < _gridSize.Column; j++)
                     {
-                        if (_nodes[i, j].IsBlock == true) continue;
+                        if (_nodes[i, j].IsBlock(_size) == true) continue;
 
                         for (int k = 0; k < 9; k++)
                         {
@@ -407,19 +416,19 @@ namespace JPSPlus
                 for (int j = 0; j < _gridSize.Column; j++)
                 {
                     Node currentNode = _nodes[i, j];
-                    if (currentNode.IsBlock == false) continue; // 만약 Block이 아니면 continue
+                    if (currentNode.IsBlock(_size) == false) continue; // 만약 Block이 아니면 continue
 
                     Grid2D northEastIndex = new Grid2D(currentNode.Index.Row + _direction[1].Row, currentNode.Index.Column + _direction[1].Column);
 
-                    if(IsOutOfRange(northEastIndex) == false && _nodes[northEastIndex.Row, northEastIndex.Column].IsBlock == false)
+                    if(IsOutOfRange(northEastIndex) == false && _nodes[northEastIndex.Row, northEastIndex.Column].IsBlock(_size) == false)
                     {
                         Node node = _nodes[northEastIndex.Row, northEastIndex.Column];
                         
                         Grid2D southIndex = new Grid2D(node.Index.Row + _direction[4].Row, node.Index.Column + _direction[4].Column);
                         Grid2D westIndex = new Grid2D(node.Index.Row + _direction[6].Row, node.Index.Column + _direction[6].Column);
 
-                        if(IsOutOfRange(southIndex) == false && _nodes[southIndex.Row, southIndex.Column].IsBlock == false &&
-                            IsOutOfRange(westIndex) == false && _nodes[westIndex.Row, westIndex.Column].IsBlock == false)
+                        if(IsOutOfRange(southIndex) == false && _nodes[southIndex.Row, southIndex.Column].IsBlock(_size) == false &&
+                            IsOutOfRange(westIndex) == false && _nodes[westIndex.Row, westIndex.Column].IsBlock(_size) == false)
                         {
                             node.IsJumpPoint = true;
                             node.JumpPointDirections[4] = true;
@@ -430,15 +439,15 @@ namespace JPSPlus
 
                     Grid2D southEastIndex = new Grid2D(currentNode.Index.Row + _direction[3].Row, currentNode.Index.Column + _direction[3].Column);
 
-                    if (IsOutOfRange(southEastIndex) == false && _nodes[southEastIndex.Row, southEastIndex.Column].IsBlock == false)
+                    if (IsOutOfRange(southEastIndex) == false && _nodes[southEastIndex.Row, southEastIndex.Column].IsBlock(_size) == false)
                     {
                         Node node = _nodes[southEastIndex.Row, southEastIndex.Column];
 
                         Grid2D northIndex = new Grid2D(node.Index.Row + _direction[0].Row, node.Index.Column + _direction[0].Column);
                         Grid2D westIndex = new Grid2D(node.Index.Row + _direction[6].Row, node.Index.Column + _direction[6].Column);
 
-                        if (IsOutOfRange(northIndex) == false && _nodes[northIndex.Row, northIndex.Column].IsBlock == false &&
-                            IsOutOfRange(westIndex) == false && _nodes[westIndex.Row, westIndex.Column].IsBlock == false)
+                        if (IsOutOfRange(northIndex) == false && _nodes[northIndex.Row, northIndex.Column].IsBlock(_size) == false &&
+                            IsOutOfRange(westIndex) == false && _nodes[westIndex.Row, westIndex.Column].IsBlock(_size) == false)
                         {
                             node.IsJumpPoint = true;
                             node.JumpPointDirections[0] = true;
@@ -449,15 +458,15 @@ namespace JPSPlus
 
                     Grid2D southWestIndex = new Grid2D(currentNode.Index.Row + _direction[5].Row, currentNode.Index.Column + _direction[5].Column);
 
-                    if (IsOutOfRange(southWestIndex) == false && _nodes[southWestIndex.Row, southWestIndex.Column].IsBlock == false)
+                    if (IsOutOfRange(southWestIndex) == false && _nodes[southWestIndex.Row, southWestIndex.Column].IsBlock(_size) == false)
                     {
                         Node node = _nodes[southWestIndex.Row, southWestIndex.Column];
 
                         Grid2D northIndex = new Grid2D(node.Index.Row + _direction[0].Row, node.Index.Column + _direction[0].Column);
                         Grid2D eastIndex = new Grid2D(node.Index.Row + _direction[2].Row, node.Index.Column + _direction[2].Column);
 
-                        if (IsOutOfRange(northIndex) == false && _nodes[northIndex.Row, northIndex.Column].IsBlock == false &&
-                            IsOutOfRange(eastIndex) == false && _nodes[eastIndex.Row, eastIndex.Column].IsBlock == false)
+                        if (IsOutOfRange(northIndex) == false && _nodes[northIndex.Row, northIndex.Column].IsBlock(_size) == false &&
+                            IsOutOfRange(eastIndex) == false && _nodes[eastIndex.Row, eastIndex.Column].IsBlock(_size) == false)
                         {
                             node.IsJumpPoint = true;
                             node.JumpPointDirections[0] = true;
@@ -468,15 +477,15 @@ namespace JPSPlus
 
                     Grid2D northWestIndex = new Grid2D(currentNode.Index.Row + _direction[7].Row, currentNode.Index.Column + _direction[7].Column);
 
-                    if (IsOutOfRange(northWestIndex) == false && _nodes[northWestIndex.Row, northWestIndex.Column].IsBlock == false)
+                    if (IsOutOfRange(northWestIndex) == false && _nodes[northWestIndex.Row, northWestIndex.Column].IsBlock(_size) == false)
                     {
                         Node node = _nodes[northWestIndex.Row, northWestIndex.Column];
 
                         Grid2D southIndex = new Grid2D(node.Index.Row + _direction[4].Row, node.Index.Column + _direction[4].Column);
                         Grid2D eastIndex = new Grid2D(node.Index.Row + _direction[2].Row, node.Index.Column + _direction[2].Column);
 
-                        if (IsOutOfRange(southIndex) == false && _nodes[southIndex.Row, southIndex.Column].IsBlock == false &&
-                            IsOutOfRange(eastIndex) == false && _nodes[eastIndex.Row, eastIndex.Column].IsBlock == false)
+                        if (IsOutOfRange(southIndex) == false && _nodes[southIndex.Row, southIndex.Column].IsBlock(_size) == false &&
+                            IsOutOfRange(eastIndex) == false && _nodes[eastIndex.Row, eastIndex.Column].IsBlock(_size) == false)
                         {
                             node.IsJumpPoint = true;
                             node.JumpPointDirections[4] = true;
@@ -500,7 +509,7 @@ namespace JPSPlus
                     Node node = _nodes[i, j];
 
                     // If we've reach a wall, then reset everything :(
-                    if (node.IsBlock)
+                    if (node.IsBlock(_size))
                     {
                         jumpDistanceSoFar = -1;
                         jumpPointSeen = false;
@@ -535,7 +544,7 @@ namespace JPSPlus
                     Node node = _nodes[i, j];
 
                     // If we've reach a wall, then reset everything :(
-                    if (node.IsBlock)
+                    if (node.IsBlock(_size))
                     {
                         jumpDistanceSoFar = -1;
                         jumpPointSeen = false;
@@ -578,7 +587,7 @@ namespace JPSPlus
                     Node node = _nodes[j, i];
 
                     // If we've reach a wall, then reset everything :(
-                    if (node.IsBlock)
+                    if (node.IsBlock(_size))
                     {
                         jumpDistanceSoFar = -1;
                         jumpPointSeen = false;
@@ -614,7 +623,7 @@ namespace JPSPlus
                     Node node = _nodes[j, i];
 
                     // If we've reach a wall, then reset everything :(
-                    if (node.IsBlock)
+                    if (node.IsBlock(_size))
                     {
                         jumpDistanceSoFar = -1;
                         jumpPointSeen = false;
@@ -649,21 +658,21 @@ namespace JPSPlus
             {
                 for (int j = 0; j < _gridSize.Column; j++)
                 {
-                    if( _nodes[i, j].IsBlock) continue;
+                    if( _nodes[i, j].IsBlock(_size)) continue;
 
                     Node node = _nodes[i, j];
 
                     // NORTH_WEST의 경우
                     if (i == 0 || j == 0 ||
-                        (IsOutOfRange(new Grid2D(i - 1, j)) == false && _nodes[i - 1, j].IsBlock) ||
-                        (IsOutOfRange(new Grid2D(i, j - 1)) == false && _nodes[i, j - 1].IsBlock) ||
-                        (IsOutOfRange(new Grid2D(i - 1, j - 1)) == false && _nodes[i - 1, j - 1].IsBlock)
+                        (IsOutOfRange(new Grid2D(i - 1, j)) == false && _nodes[i - 1, j].IsBlock(_size)) ||
+                        (IsOutOfRange(new Grid2D(i, j - 1)) == false && _nodes[i, j - 1].IsBlock(_size)) ||
+                        (IsOutOfRange(new Grid2D(i - 1, j - 1)) == false && _nodes[i - 1, j - 1].IsBlock(_size))
                     )
                     {
                         node.JumpPointDistances[7] = 0; // NORTH_WEST
                     }
-                    else if(IsOutOfRange(new Grid2D(i - 1, j)) == false && _nodes[i - 1, j].IsBlock == false && // NORTH_WEST가 비어있고
-                        IsOutOfRange(new Grid2D(i, j - 1)) == false && _nodes[i, j - 1].IsBlock == false &&
+                    else if(IsOutOfRange(new Grid2D(i - 1, j)) == false && _nodes[i - 1, j].IsBlock(_size) == false && // NORTH_WEST가 비어있고
+                        IsOutOfRange(new Grid2D(i, j - 1)) == false && _nodes[i, j - 1].IsBlock(_size) == false &&
                         (_nodes[i - 1, j - 1].JumpPointDistances[0] > 0 ||
                         _nodes[i - 1, j - 1].JumpPointDistances[6] > 0)) // straight jump point를 가진 경우
                     {
@@ -686,15 +695,15 @@ namespace JPSPlus
 
                     // NORTH_EAST의 경우
                     if (i == 0 || j == _gridSize.Column - 1 ||
-                        (IsOutOfRange(new Grid2D(i - 1, j)) == false && _nodes[i - 1, j].IsBlock) ||
-                        (IsOutOfRange(new Grid2D(i, j + 1)) == false && _nodes[i, j + 1].IsBlock) ||
-                        (IsOutOfRange(new Grid2D(i - 1, j + 1)) == false && _nodes[i - 1, j + 1].IsBlock)
+                        (IsOutOfRange(new Grid2D(i - 1, j)) == false && _nodes[i - 1, j].IsBlock(_size)) ||
+                        (IsOutOfRange(new Grid2D(i, j + 1)) == false && _nodes[i, j + 1].IsBlock(_size)) ||
+                        (IsOutOfRange(new Grid2D(i - 1, j + 1)) == false && _nodes[i - 1, j + 1].IsBlock(_size))
                     )
                     {
                         node.JumpPointDistances[1] = 0; // NORTH_EAST
                     }
-                    else if (IsOutOfRange(new Grid2D(i - 1, j)) == false && _nodes[i - 1, j].IsBlock == false && // NORTH_EAST가 비어있고
-                        IsOutOfRange(new Grid2D(i, j + 1)) == false && _nodes[i, j + 1].IsBlock == false &&
+                    else if (IsOutOfRange(new Grid2D(i - 1, j)) == false && _nodes[i - 1, j].IsBlock(_size) == false && // NORTH_EAST가 비어있고
+                        IsOutOfRange(new Grid2D(i, j + 1)) == false && _nodes[i, j + 1].IsBlock(_size) == false &&
                         (_nodes[i - 1, j + 1].JumpPointDistances[0] > 0 ||
                         _nodes[i - 1, j + 1].JumpPointDistances[2] > 0)) // straight jump point를 가진 경우
                     {
@@ -722,21 +731,21 @@ namespace JPSPlus
             {
                 for (int j = 0; j < _gridSize.Column; j++)
                 {
-                    if (_nodes[i, j].IsBlock) continue;
+                    if (_nodes[i, j].IsBlock(_size)) continue;
 
                     Node node = _nodes[i, j];
 
                     // SOUTH_WEST의 경우
                     if (i == _gridSize.Row - 1 || j == 0 ||
-                        (IsOutOfRange(new Grid2D(i + 1, j)) == false && _nodes[i + 1, j].IsBlock) ||
-                        (IsOutOfRange(new Grid2D(i, j - 1)) == false && _nodes[i, j - 1].IsBlock) ||
-                        (IsOutOfRange(new Grid2D(i + 1, j - 1)) == false && _nodes[i + 1, j - 1].IsBlock)
+                        (IsOutOfRange(new Grid2D(i + 1, j)) == false && _nodes[i + 1, j].IsBlock(_size)) ||
+                        (IsOutOfRange(new Grid2D(i, j - 1)) == false && _nodes[i, j - 1].IsBlock(_size)) ||
+                        (IsOutOfRange(new Grid2D(i + 1, j - 1)) == false && _nodes[i + 1, j - 1].IsBlock(_size))
                     )
                     {
                         node.JumpPointDistances[5] = 0; // SOUTH_WEST
                     }
-                    else if (IsOutOfRange(new Grid2D(i + 1, j)) == false && _nodes[i + 1, j].IsBlock == false && // SOUTH_WEST가 비어있고
-                        IsOutOfRange(new Grid2D(i, j - 1)) == false && _nodes[i, j - 1].IsBlock == false &&
+                    else if (IsOutOfRange(new Grid2D(i + 1, j)) == false && _nodes[i + 1, j].IsBlock(_size) == false && // SOUTH_WEST가 비어있고
+                        IsOutOfRange(new Grid2D(i, j - 1)) == false && _nodes[i, j - 1].IsBlock(_size) == false &&
                         (_nodes[i + 1, j - 1].JumpPointDistances[4] > 0 ||
                         _nodes[i + 1, j - 1].JumpPointDistances[6] > 0)) // straight jump point를 가진 경우
                     {
@@ -759,15 +768,15 @@ namespace JPSPlus
 
                     // SOUTH_EAST의 경우
                     if (i == _gridSize.Row - 1 || j == _gridSize.Column - 1 ||
-                        (IsOutOfRange(new Grid2D(i + 1, j)) == false && _nodes[i + 1, j].IsBlock) ||
-                        (IsOutOfRange(new Grid2D(i, j + 1)) == false && _nodes[i, j + 1].IsBlock) ||
-                        (IsOutOfRange(new Grid2D(i + 1, j + 1)) == false && _nodes[i + 1, j + 1].IsBlock)
+                        (IsOutOfRange(new Grid2D(i + 1, j)) == false && _nodes[i + 1, j].IsBlock(_size)) ||
+                        (IsOutOfRange(new Grid2D(i, j + 1)) == false && _nodes[i, j + 1].IsBlock(_size)) ||
+                        (IsOutOfRange(new Grid2D(i + 1, j + 1)) == false && _nodes[i + 1, j + 1].IsBlock(_size))
                     )
                     {
                         node.JumpPointDistances[3] = 0; // SOUTH_EAST
                     }
-                    else if (IsOutOfRange(new Grid2D(i + 1, j)) == false && _nodes[i + 1, j].IsBlock == false && // SOUTH_EAST가 비어있고
-                        IsOutOfRange(new Grid2D(i, j + 1)) == false && _nodes[i, j + 1].IsBlock == false &&
+                    else if (IsOutOfRange(new Grid2D(i + 1, j)) == false && _nodes[i + 1, j].IsBlock(_size) == false && // SOUTH_EAST가 비어있고
+                        IsOutOfRange(new Grid2D(i, j + 1)) == false && _nodes[i, j + 1].IsBlock(_size) == false &&
                         (_nodes[i + 1, j + 1].JumpPointDistances[4] > 0 ||
                         _nodes[i + 1, j + 1].JumpPointDistances[2] > 0)) // straight jump point를 가진 경우
                     {
